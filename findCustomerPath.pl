@@ -39,7 +39,7 @@ use LWP::Simple;
 use Term::ReadPassword::Win32;
 
 my $version     = "0.1.1";
-my $arguments   = "u:p:U:P:i:ghvo:nq";
+my $arguments   = "u:p:U:P:i:ghvo:q";
 my $MAXTHREADS	= 15;
 my $time = time();
 getopts( $arguments, \%opt ) or usage();
@@ -54,73 +54,6 @@ $opt{o} = "OUT_".$ip."_".$time unless ($opt{o});
 $opt{t} = 2 unless $opt{t};	
 my @targets;
 my @ciNames;
-
-my $svnrepourl  = "http://10.34.219.5/repos/scripts/findCustomerPath/"; # Do not forget the last /
-my $SVNUsername = "l2sup";
-my $SVNPassword = "Nz7149n!";
-my $SVNScriptName = "findCustomerPath.pl";
-my $SVNFinalEXEName = "fcp";
-
-$ua = new LWP::UserAgent;
-my $req = HTTP::Headers->new;
-
-unless ($opt{n}) {
-	#
-	# New version checking for upgrade
-	#
-	$req = HTTP::Request->new( GET => $svnrepourl.$SVNScriptName );
-	$req->authorization_basic( $SVNUsername, $SVNPassword );
-	my $response = $ua->request($req);
-	my $publicVersion;
-	my $changelog = "";
-	my $fetchChangelog = 0;
-	my @responseLines = split(/\n/, $response->content);
-	foreach $line (@responseLines) {
-		if ( $line =~ /^# Needed Libraries/ ) { $fetchChangelog = 0; }
-		if ( $line =~ /^my \$version     = "(.*)";/ ) {
-			$publicVersion = $1;
-		} elsif ( $line =~ /^# $version                 \w+\s+/g ) {
-			$fetchChangelog = 1;
-		} 
-		if ( $fetchChangelog eq 1 ) { $changelog .= $line."\n"; }
-	}
-	if ( $version ne $publicVersion and length($publicVersion)) {		# SELF UPDATE INITIATION
-		print "\nSelf Updating to v".$publicVersion.".";
-		$req = HTTP::Request->new( GET => $svnrepourl.$SVNFinalEXEName.'.exe' );
-		$req->authorization_basic( $SVNUsername, $SVNPassword );
-		if($ua->request( $req, $SVNFinalEXEName.".tmp" )->is_success) {
-			print "\n# DELTA CHANGELOG :\n";
-			print "# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n";
-			print "# Version               Editor          Date            Description\n";
-			print "# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n";
-			print $changelog;
-			open(BATCH, "> upgrade".$SVNFinalEXEName.".bat");
-			print BATCH "\@ECHO OFF\n";
-			print BATCH "echo Upgrading started. Ignore process termination errors.\n";
-			print BATCH "sleep 1\n";
-			print BATCH "taskkill /F /IM ".$SVNFinalEXEName.".exe > NULL 2>&1\n";
-			print BATCH "sleep 1\n";
-			print BATCH "ren ".$SVNFinalEXEName.".exe ".$SVNFinalEXEName."_to_be_deleted  > NULL 2>&1\n";
-			print BATCH "copy /Y ".$SVNFinalEXEName.".tmp ".$SVNFinalEXEName.".exe > NULL 2>&1\n";
-			print BATCH "del ".$SVNFinalEXEName.".tmp > NULL 2>&1\n";
-			print BATCH "del ".$SVNFinalEXEName."_to_be_deleted > NULL 2>&1\n";
-			print BATCH "del NULL\n";
-			print BATCH "echo All done. Please run the ".$SVNFinalEXEName." command once again.\n\n";
-			close(BATCH);
-			print "Initiating upgrade..\n";
-			sleep 1;
-			exec('cmd /C upgrade'.$SVNFinalEXEName.'.bat');
-			exit;
-		} else {
-			print "Can not retrieve file. Try again later. You can use -n to skip updating\n";
-			exit;
-		}
-	} else {
-		print " ( up-to-date )\n";
-	}
-} else {
-	print " ( no version check )\n";
-}
 
 print "Verbose mode ON\n" if ($opt{v});
 
@@ -747,7 +680,6 @@ Usage : fcp [-i IP] [-v] [-u USERNAME] [-p PASSWORD] [-U USERNAME] [-P PASSWORD]
  -i [IP]              The starting IP of discovery process
  -v                   Verbose                                   ( Default OFF )
  -g                   Generate network graph                    ( Default OFF )
- -n                   Skip self auto-update                     ( Default ON )
 
 EOF
 	print $usageText;
